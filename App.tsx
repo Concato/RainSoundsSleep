@@ -1,117 +1,170 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
   View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
 } from 'react-native';
+import TrackPlayer, { RepeatMode } from 'react-native-track-player';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+type SoundName = 'rain' | 'forest' | 'ocean' | 'fire';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const sounds: Record<SoundName, any> = {
+  rain: require('./assets/sounds/rain-sound.mp3'),
+  forest: require('./assets/sounds/forest-ambience.mp3'),
+  ocean: require('./assets/sounds/ocean-waves.mp3'),
+  fire: require('./assets/sounds/firewood-burning-sound.mp3'),
+};
 
-function Section({children, title}: SectionProps): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+const App = () => {
+  const [timer, setTimer] = useState('');
+  const [selectedSound, setSelectedSound] = useState<SoundName>('rain');
 
-function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  useEffect(() => {
+    const init = async () => {
+      await TrackPlayer.setupPlayer();
+      await TrackPlayer.setRepeatMode(RepeatMode.Track);
+    };
+    init();
+    return () => {
+      TrackPlayer.reset();
+    };
+  }, []);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const playSound = async () => {
+    await TrackPlayer.reset();
+    await TrackPlayer.add({
+      id: 'sound',
+      url: sounds[selectedSound],
+      title: selectedSound,
+      isLooping: true,
+    });
+    await TrackPlayer.play();
+
+    const minutes = parseInt(timer);
+    if (!isNaN(minutes) && minutes > 0) {
+      setTimeout(() => stopSound(), minutes * 60 * 1000);
+    }
+  };
+
+  const stopSound = async () => {
+    await TrackPlayer.stop();
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
+    <View style={styles.container}>
+      <Text style={styles.title}>Rain Sounds Sleep</Text>
+
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.soundList}
+        contentContainerStyle={styles.soundListContent}
+      >
+        {Object.keys(sounds).map((key) => (
+          <TouchableOpacity
+            key={key}
+            style={[
+              styles.soundButton,
+              selectedSound === key && styles.soundButtonSelected,
+            ]}
+            onPress={() => setSelectedSound(key as SoundName)}
+          >
+            <Text style={styles.soundText}>{key.toUpperCase()}</Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
-    </SafeAreaView>
+
+      <TextInput
+        placeholder="Timer (min)"
+        placeholderTextColor="#999"
+        style={styles.input}
+        keyboardType="numeric"
+        value={timer}
+        onChangeText={setTimer}
+      />
+
+      <TouchableOpacity style={styles.playButton} onPress={playSound}>
+        <Text style={styles.playButtonText}>▶ Play</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.stopButton} onPress={stopSound}>
+        <Text style={styles.stopButtonText}>⏹ Stop</Text>
+      </TouchableOpacity>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    backgroundColor: '#0d1117',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
   },
-  sectionTitle: {
-    fontSize: 24,
+  title: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '600',
+    marginBottom: 30,
+  },
+  soundList: {
+    maxHeight: 60,
+    marginBottom: 20,
+  },
+  soundListContent: {
+    gap: 12,
+    paddingHorizontal: 10,
+  },
+  soundButton: {
+    backgroundColor: '#21262d',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+  },
+  soundButtonSelected: {
+    backgroundColor: '#238636',
+  },
+  soundText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#30363d',
+    borderRadius: 10,
+    padding: 10,
+    color: '#fff',
+    width: 200,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  playButton: {
+    backgroundColor: '#238636',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 30,
+    marginBottom: 10,
+  },
+  playButtonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '600',
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  stopButton: {
+    backgroundColor: '#da3633',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 30,
   },
-  highlight: {
-    fontWeight: '700',
+  stopButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 
